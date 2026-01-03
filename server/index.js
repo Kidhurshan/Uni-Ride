@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -28,6 +29,9 @@ app.use(express.urlencoded({ extended: true }));
 // Make io accessible to routes
 app.set('io', io);
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
@@ -37,6 +41,7 @@ app.use('/api/messages', require('./routes/messages'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/uploads', require('./routes/uploads'));
 
 // Health check
 app.get('/api/health', (req, res) => {

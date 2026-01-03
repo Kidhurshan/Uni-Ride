@@ -6,10 +6,12 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
+import api, { API_URL } from '../../config/api';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Avatar from '../../components/common/Avatar';
@@ -24,7 +26,9 @@ const EditProfileScreen = ({ navigation }) => {
     university: user?.university || '',
     studentId: user?.studentId || '',
   });
+  const [profileImage, setProfileImage] = useState(user?.profileImage || null);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -62,28 +66,94 @@ const EditProfileScreen = ({ navigation }) => {
       quality: 0.8,
     });
 
-    if (!result.canceled) {
-      // TODO: Upload image to server and update profileImage
-      Alert.alert('Info', 'Image upload will be implemented with cloud storage');
+    if (!result.canceled && result.assets[0]) {
+      uploadImage(result.assets[0]);
     }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to camera');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      uploadImage(result.assets[0]);
+    }
+  };
+
+  const uploadImage = async (imageAsset) => {
+    setUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', {
+        uri: imageAsset.uri,
+        type: 'image/jpeg',
+        name: 'profile-image.jpg',
+      });
+
+      const response = await api.post('/uploads/profile-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setProfileImage(response.data.imageUrl);
+      Alert.alert('Success', 'Profile image updated!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const showImageOptions = () => {
+    Alert.alert(
+      'Update Profile Photo',
+      'Choose an option',
+      [
+        { text: 'Take Photo', onPress: takePhoto },
+        { text: 'Choose from Library', onPress: pickImage },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   return (
     <ScrollView style={styles.container}>
       {/* Profile Image */}
       <View style={styles.imageSection}>
-        <TouchableOpacity onPress={pickImage}>
-          <Avatar
-            source={user?.profileImage}
-            firstName={user?.firstName}
-            lastName={user?.lastName}
-            size="xl"
-          />
-          <View style={styles.editImageButton}>
-            <Ionicons name="camera" size={18} color="#fff" />
-          </View>
+        <TouchableOpacity onPress={showImageOptions} disabled={uploadingImage}>
+          {uploadingImage ? (
+            <View style={styles.uploadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : (
+            <>
+              <Avatar
+                source={profileImage}
+                firstName={user?.firstName}
+                lastName={user?.lastName}
+                size="xl"
+              />
+              <View style={styles.editImageButton}>
+                <Ionicons name="camera" size={18} color="#fff" />
+              </View>
+            </>
+          )}
         </TouchableOpacity>
-        <Text style={styles.changePhotoText}>Tap to change photo</Text>
+        <Text style={styles.changePhotoText}>
+          {uploadingImage ? 'Uploading...' : 'Tap to change photo'}
+        </Text>
       </View>
 
       {/* Form */}
@@ -163,6 +233,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.xl,
     backgroundColor: colors.surface,
+  },
+  uploadingContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   editImageButton: {
     position: 'absolute',

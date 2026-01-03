@@ -4,12 +4,10 @@
     "slug": "uni-ride",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#4F46E5"
+      "backgroundColor": "#4F46E5",
+      "resizeMode": "contain"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,7 +18,6 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4F46E5"
       },
       "package": "com.uniride.app",
@@ -28,9 +25,6 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ]
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
@@ -42,10 +36,14 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
           "color": "#4F46E5"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
   }
 }

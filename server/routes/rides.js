@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const Ride = require('../models/Ride');
+const Booking = require('../models/Booking');
+const Notification = require('../models/Notification');
 const { auth, isDriver } = require('../middleware/auth');
 
 // @route   POST /api/rides
@@ -273,7 +275,37 @@ router.delete('/:id', auth, async (req, res) => {
     ride.status = 'cancelled';
     await ride.save();
 
-    // TODO: Notify all booked riders about cancellation
+    // Notify all booked riders about cancellation
+    const bookings = await Booking.find({
+      ride: ride._id,
+      status: { $in: ['pending', 'confirmed'] }
+    });
+
+    const io = req.app.get('io');
+
+    for (const booking of bookings) {
+      // Update booking status
+      booking.status = 'cancelled';
+      await booking.save();
+
+      // Create notification
+      await Notification.create({
+        user: booking.rider,
+        type: 'ride_cancelled',
+        title: 'Ride Cancelled',
+        message: `The ride from ${ride.origin.address} to ${ride.destination.address} has been cancelled by the driver.`,
+        data: {
+          rideId: ride._id,
+          bookingId: booking._id
+        }
+      });
+
+      // Send real-time notification
+      io.to(booking.rider.toString()).emit('rideCancelled', {
+        rideId: ride._id,
+        bookingId: booking._id
+      });
+    }
 
     res.json({ message: 'Ride cancelled successfully' });
   } catch (error) {
